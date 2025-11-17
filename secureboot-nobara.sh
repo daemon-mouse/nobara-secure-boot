@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s nullglob
 echo "Based on sbctl on https://github.com/Foxboron/sbctl"
 echo "\nAlso huge thanks to u/Asphalt_Expert on reddit for his tutorial\n"
 
@@ -73,10 +74,10 @@ done
 
 # Sign kernel images
 echo -e "\n=== Checking kernel images ==="
-kernels=$(ls -1 /boot/vmlinuz-* 2>/dev/null || true)
+kernels=(/boot/vmlinuz-*)
 
-if [[ -n "$kernels" ]]; then
-    for kernel in $kernels; do
+if [[ ${#kernels[@]} -gt 0 ]]; then
+    for kernel in "${kernels[@]}"; do
         echo "Signing kernel: $kernel"
         sbctl sign -s "$kernel" || echo "⚠️ Failed to sign $kernel"
     done
