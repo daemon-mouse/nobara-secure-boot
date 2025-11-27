@@ -13,6 +13,14 @@ echo "=== Enabling sbctl copr and installing sbctl ==="
 dnf -y copr enable chenxiaolong/sbctl
 dnf -y install sbctl jq
 
+is_sbctl_installed() {
+	[ "$(sbctl status --json | jq --raw-output .installed)" = "true" ]
+}
+
+is_in_setup_mode() {
+	[ "$(sbctl status --json | jq --raw-output .setup_mode)" = "true" ]
+}
+
 echo -e "\n=== Checking sbctl status ==="
 sbctl status
 
@@ -28,9 +36,7 @@ enroll_keys() {
 }
 
 # Check Setup Mode
-setup_mode=$(sbctl status | grep -i "Setup Mode" | awk '{print $3}')
-
-if [[ "$setup_mode" == "✓" ]]; then
+if ! is_in_setup_mode ; then
     echo -e "\n=== Setup Mode is Disabled ==="
     enroll_keys
     echo -e "\nContinuing without reboot..."
