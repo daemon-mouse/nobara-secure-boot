@@ -24,29 +24,18 @@ is_in_setup_mode() {
 echo -e "\n=== Checking sbctl status ==="
 sbctl status
 
-read -rp "Do you play valorant or battlefield 6 (The stupid windows games)? (y/n): " dualboot
-
-enroll_keys() {
-	if [[ "$dualboot" =~ ^[Yy]$ ]]; then
-		echo -e "\n fuck vanguard and EA's shit anti cheat for making me do this"
-		sbctl enroll-keys --microsoft
-	else
-		sbctl enroll-keys
-	fi
-}
-
 # Check Setup Mode
 if ! is_in_setup_mode; then
 	echo -e "\n=== Setup Mode is Disabled ==="
-	enroll_keys
-	echo -e "\nContinuing without reboot..."
-else
-	echo -e "\n=== Setup Mode is Enabled ==="
-	echo "Creating and enrolling keys..."
-	sbctl create-keys
-	enroll_keys
-	echo -e "\nContinuing without reboot..."
+	echo -e "\nYou must put the system in Setup Mode to continue."
+	exit 0
 fi
+
+echo -e "\n=== Setup Mode is Enabled ==="
+echo "Creating and enrolling keys..."
+sbctl create-keys
+sbctl enroll-keys --microsoft
+echo -e "\nContinuing without reboot..."
 
 # --- Post key enrollment ---
 echo -e "\n=== Post enrollment status ==="
