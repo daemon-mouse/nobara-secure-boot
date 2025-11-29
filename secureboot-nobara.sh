@@ -33,8 +33,26 @@ if ! is_sbctl_installed; then
 
 	# Check Setup Mode
 	if ! is_in_setup_mode; then
-		echo -e "\n=== Setup Mode is Disabled ==="
-		echo -e "\nYou must put the system in Setup Mode to continue."
+		echo -e "\n=== Setup Mode is Disabled ===\n"
+		cat <<-'EOF'
+			To use custom Secure Boot keys, you must reboot into BIOS and enter Setup
+			Mode by navigating to the Secure Boot menu. Without completing this step,
+			enrolling custom keys will be rejected by the firmware.
+
+			Unfortunately, the exact steps to enable Setup Mode are specific to each BIOS
+			vendor. Hopefully, you have a clearly labelled menu entry for it.
+
+			If you're having trouble, try the following:
+			  - Delete/clear the Secure Boot keys (or at minimum the Platform Key)
+			  - Turn Secure Boot mode off or on
+
+			Warning: Some BIOSes have a 'Custom Mode' which only disables signature
+			verification and should NOT be enabled unless no other way to enter key
+			management is provided.
+
+			Note: You can attempt to reboot into BIOS with the following command:
+			        systemctl reboot --firmware-setup
+		EOF
 		exit 0
 	fi
 
@@ -83,7 +101,9 @@ sbctl verify | grep -v "failed to verify file"
 
 echo -e "\nAll unsigned EFI binaries and kernels have been signed!"
 
-if ! is_secure_boot_on ; then
+if ! is_secure_boot_on; then
 	echo -e "\nSecure Boot has been successfully configured."
 	echo -e "You may now reboot the system and enable Secure Boot in BIOS."
+	echo -e "\nNote: You can attempt to reboot into BIOS with the following command:"
+	echo -e "\tsystemctl reboot --firmware-setup"
 fi
