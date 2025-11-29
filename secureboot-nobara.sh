@@ -2,7 +2,7 @@
 set -euo pipefail
 shopt -s nullglob
 echo "Based on sbctl on https://github.com/Foxboron/sbctl"
-echo "\nAlso huge thanks to u/Asphalt_Expert on reddit for his tutorial\n"
+echo -e "Also huge thanks to u/Asphalt_Expert on reddit for his tutorial\n"
 
 if [[ "$EUID" -ne 0 ]]; then
 	echo "You must run this script as user root (use: sudo $0)"
