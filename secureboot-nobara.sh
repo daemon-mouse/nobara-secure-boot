@@ -56,17 +56,19 @@ if ! is_sbctl_installed; then
 		exit 0
 	fi
 
-	echo -e "\n=== Setup Mode is Enabled ==="
-	echo "Creating and enrolling keys..."
+	echo -e "\n=== Creating custom key ==="
 	sbctl create-keys
+else
+	echo -e "\n=== Sbctl is Installed ==="
+fi
+
+if is_in_setup_mode; then
+	echo -e "\n=== Enrolling custom key and Microsoft's keys ==="
 	sbctl enroll-keys --microsoft
-	echo -e "\nContinuing without reboot..."
 
 	# --- Post key enrollment ---
 	echo -e "\n=== Post enrollment status ==="
 	sbctl status
-else
-	echo -e "\n=== Sbctl is Installed ==="
 fi
 
 echo -e "\n=== Signing and verifying EFI binaries ==="
