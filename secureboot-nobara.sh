@@ -24,47 +24,38 @@ is_in_setup_mode() {
 echo -e "\n=== Checking sbctl status ==="
 sbctl status
 
-# Check Setup Mode
-if ! is_in_setup_mode; then
-	echo -e "\n=== Setup Mode is Disabled ==="
-	echo -e "\nYou must put the system in Setup Mode to continue."
-	exit 0
+if ! is_sbctl_installed; then
+	echo -e "\n=== Installing sbctl ==="
+
+	# Check Setup Mode
+	if ! is_in_setup_mode; then
+		echo -e "\n=== Setup Mode is Disabled ==="
+		echo -e "\nYou must put the system in Setup Mode to continue."
+		exit 0
+	fi
+
+	echo -e "\n=== Setup Mode is Enabled ==="
+	echo "Creating and enrolling keys..."
+	sbctl create-keys
+	sbctl enroll-keys --microsoft
+	echo -e "\nContinuing without reboot..."
+
+	# --- Post key enrollment ---
+	echo -e "\n=== Post enrollment status ==="
+	sbctl status
+else
+	echo -e "\n=== Sbctl is Installed ==="
 fi
-
-echo -e "\n=== Setup Mode is Enabled ==="
-echo "Creating and enrolling keys..."
-sbctl create-keys
-sbctl enroll-keys --microsoft
-echo -e "\nContinuing without reboot..."
-
-# --- Post key enrollment ---
-echo -e "\n=== Post enrollment status ==="
-sbctl status
 
 echo -e "\n=== Signing and verifying EFI binaries ==="
 
-while true; do
-	# Run verify and strip bogus "invalid pe header" lines
-	verify_output=$(sbctl verify 2>&1 | grep -v "failed to verify file")
+readarray -d '' -t UNSIGNED_EFIS < <(
+	sbctl verify --json | jq --raw-output0 '.[]? | select(.is_signed == 0) | .file_name'
+)
 
-	echo "$verify_output"
-
-	# Extract unsigned .efi / .EFI files
-	unsigned_efi=$(echo "$verify_output" | grep "✗" | awk '{print $2}' | grep -E "\.efi$|\.EFI$" || true)
-
-	if [[ -z "$unsigned_efi" ]]; then
-		echo -e "\n✅ All EFI binaries are signed!"
-		break
-	fi
-
-	echo -e "\n=== Found unsigned EFI binaries ==="
-	echo "$unsigned_efi"
-
-	while read -r file; do
-		[[ -z "$file" ]] && continue
-		echo "Signing: $file"
-		sbctl sign -s "$file" || echo "⚠️ Failed to sign $file"
-	done <<<"$unsigned_efi"
+for EFI in "${UNSIGNED_EFIS[@]}"; do
+		echo "Signing: $EFI"
+		sbctl sign "$EFI" || echo -e "\tFailed to sign $EFI"
 done
 
 # Sign kernel images
@@ -74,7 +65,7 @@ kernels=(/boot/vmlinuz-*)
 if [[ ${#kernels[@]} -gt 0 ]]; then
 	for kernel in "${kernels[@]}"; do
 		echo "Signing kernel: $kernel"
-		sbctl sign -s "$kernel" || echo "⚠️ Failed to sign $kernel"
+		sbctl sign "$kernel" || echo "⚠️ Failed to sign $kernel"
 	done
 else
 	echo "No kernel images found in /boot/"
