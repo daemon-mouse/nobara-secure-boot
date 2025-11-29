@@ -5,7 +5,7 @@ echo "Based on sbctl on https://github.com/Foxboron/sbctl"
 echo "\nAlso huge thanks to u/Asphalt_Expert on reddit for his tutorial\n"
 
 if [[ "$EUID" -ne 0 ]]; then
-	echo "run this script as superuser dumbass (use: sudo $0)"
+	echo "You must run this script as user root (use: sudo $0)"
 	exit 1
 fi
 
@@ -14,11 +14,15 @@ dnf -y copr enable chenxiaolong/sbctl
 dnf -y install sbctl jq
 
 is_sbctl_installed() {
-	[ "$(sbctl status --json | jq --raw-output .installed)" = "true" ]
+	[ "$(sbctl status --json | jq .installed)" = "true" ]
 }
 
 is_in_setup_mode() {
-	[ "$(sbctl status --json | jq --raw-output .setup_mode)" = "true" ]
+	[ "$(sbctl status --json | jq .setup_mode)" = "true" ]
+}
+
+is_secure_boot_on() {
+	[ "$(sbctl status --json | jq .secure_boot)" = "true" ]
 }
 
 echo -e "\n=== Checking sbctl status ==="
@@ -53,9 +57,11 @@ readarray -d '' -t UNSIGNED_EFIS < <(
 	sbctl verify --json | jq --raw-output0 '.[]? | select(.is_signed == 0) | .file_name'
 )
 
+echo "Found ${#UNSIGNED_EFIS[@]} unsigned EFI binaries."
+
 for EFI in "${UNSIGNED_EFIS[@]}"; do
-		echo "Signing: $EFI"
-		sbctl sign "$EFI" || echo -e "\tFailed to sign $EFI"
+	echo "Signing: $EFI"
+	sbctl sign "$EFI" || printf "\tFailed to sign %s\n" "$EFI"
 done
 
 # Sign kernel images
@@ -65,7 +71,7 @@ kernels=(/boot/vmlinuz-*)
 if [[ ${#kernels[@]} -gt 0 ]]; then
 	for kernel in "${kernels[@]}"; do
 		echo "Signing kernel: $kernel"
-		sbctl sign "$kernel" || echo "⚠️ Failed to sign $kernel"
+		sbctl sign "$kernel" || printf "\tFailed to sign %s\n" "$kernel"
 	done
 else
 	echo "No kernel images found in /boot/"
@@ -75,6 +81,9 @@ fi
 echo -e "\n=== Final sbctl verify ==="
 sbctl verify | grep -v "failed to verify file"
 
-echo -e "\n✅ All unsigned EFI binaries and kernels have been signed!"
-echo -e "\n🔒 Now reboot the system and enable Secure Boot in BIOS"
-echo -e "\nAlso fuck riot games and EA for making me make this script"
+echo -e "\nAll unsigned EFI binaries and kernels have been signed!"
+
+if ! is_secure_boot_on ; then
+	echo -e "\nSecure Boot has been successfully configured."
+	echo -e "You may now reboot the system and enable Secure Boot in BIOS."
+fi
